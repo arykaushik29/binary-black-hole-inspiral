@@ -1,0 +1,73 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import ode
+
+m1 = 10.0  # mass of black hole 1
+m2 = 5.0  # mass of black hole 2
+
+m = m1 + m2  # total mass
+mu = (m1 * m2) / m  # reduced mass
+
+
+# coupled differential equations where:
+#   v = orbital velocity parameter
+#   phi = orbital phase
+def inspiral_equations(t, y):
+    v, phi = y
+
+    # stops evolution when velocity reaches cutoff
+    if v <= 0.5:
+        dvdt = (32 / 5) * (mu / m ** 2) * v ** 9
+        dphidt = v ** 3 / m
+    else:
+        dvdt = 0.0
+        dphidt = 0.0
+
+    return [dvdt, dphidt]
+
+
+v0 = 0.3  # intial velocity
+phi0 = 0.0  # intial orbital phase
+
+# creates ODE solver object
+solver = ode(inspiral_equations)
+
+# use Dormand Prince adaptive integrator
+solver.set_integrator('dopri5')
+solver.set_initial_value([v0, phi0], 0.0)
+
+# how often the solution is actually recorded
+dt = 0.5
+
+# empty lists to store solution
+t_values, v_values, phi_values = [], [], []
+
+# integrate until final time or failiure
+while solver.successful() and solver.t < 19800:
+    solver.integrate(solver.t + dt)
+
+    # appends the values
+    t_values.append(solver.t)
+    v_values.append(solver.y[0])
+    phi_values.append(solver.y[1])
+
+# converts lists to arrays
+t = np.array(t_values)
+v = np.array(v_values)
+phi = np.array(phi_values)
+
+# gravitational wave polarisations
+h_plus = 4 * (mu / m) * v ** 2 * np.cos(phi)
+h_cross = 4 * (mu / m) * v ** 2 * np.sin(phi)
+
+t_plot = t / 1000  # increases readability
+
+# visualisation
+plt.plot(t_plot, h_plus - h_plus.mean(), label="h_plus", color="black")
+plt.plot(t_plot, h_cross - h_cross.mean(), label="h_cross", color="red")
+plt.xlabel(r"Time ($GM/c^{3} \times 10^{3}$)")
+plt.ylabel("h(t)")
+plt.title("Binary Black Hole Inspiral Gravitational-Wave Chirp (Cutoff)")
+plt.xlim(0, 19.77)
+plt.legend()
+plt.show()
